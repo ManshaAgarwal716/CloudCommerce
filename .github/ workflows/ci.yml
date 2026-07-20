@@ -81,6 +81,7 @@ jobs:
         with:
           context: ./apps/product-service
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             mansha716/cloudcommerce-backend:latest
             mansha716/cloudcommerce-backend:${{ github.sha }}
@@ -90,6 +91,7 @@ jobs:
         with:
           context: ./apps/frontend
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: |
             mansha716/cloudcommerce-frontend:latest
             mansha716/cloudcommerce-frontend:${{ github.sha }}
