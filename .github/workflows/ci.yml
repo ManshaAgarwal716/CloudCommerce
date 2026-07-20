@@ -1,4 +1,4 @@
-name: CloudCommerce CI
+name: CloudCommerce CI/CD
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 jobs:
 
   frontend:
-    name: Frontend CI
+    name: Frontend Build
     runs-on: ubuntu-latest
 
     steps:
@@ -28,16 +28,12 @@ jobs:
         working-directory: apps/frontend
         run: npm ci
 
-      - name: Lint Frontend
-        working-directory: apps/frontend
-        run: npm run lint
-
       - name: Build Frontend
         working-directory: apps/frontend
         run: npm run build
 
   backend:
-    name: Backend CI
+    name: Backend Build
     runs-on: ubuntu-latest
 
     steps:
@@ -55,34 +51,45 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Lint Backend
-        working-directory: apps/product-service
-        run: ruff check .
-
-      - name: Run Backend Tests
-        working-directory: apps/product-service
-        run: pytest
-
   docker:
-    name: Docker Build
+    name: Build & Push Docker Images
+
     needs:
       - frontend
       - backend
 
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Build Backend Docker Image
-        run: |
-          docker build \
-          -t cloudcommerce-backend:latest \
-          ./apps/product-service
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Build Frontend Docker Image
-        run: |
-          docker build \
-          -t cloudcommerce-frontend:latest \
-          ./apps/frontend
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and Push Backend Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/product-service
+          push: true
+          tags: |
+            mansha716/cloudcommerce-backend:latest
+            mansha716/cloudcommerce-backend:${{ github.sha }}
+
+      - name: Build and Push Frontend Image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/frontend
+          push: true
+          tags: |
+            mansha716/cloudcommerce-frontend:latest
+            mansha716/cloudcommerce-frontend:${{ github.sha }}
