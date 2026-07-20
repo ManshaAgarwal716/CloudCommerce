@@ -1,4 +1,4 @@
-name: CloudCommerce 
+name: CloudCommerce CI
 
 on:
   push:
@@ -11,27 +11,38 @@ on:
 
 jobs:
 
-  build:
-
+  frontend:
+    name: Frontend CI
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Install Frontend Dependencies
         working-directory: apps/frontend
-        run: npm install
+        run: npm ci
+
+      - name: Lint Frontend
+        working-directory: apps/frontend
+        run: npm run lint
 
       - name: Build Frontend
         working-directory: apps/frontend
         run: npm run build
+
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -41,11 +52,37 @@ jobs:
       - name: Install Backend Dependencies
         working-directory: apps/product-service
         run: |
-          python3 -m pip install --upgrade pip
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Lint Backend
+        working-directory: apps/product-service
+        run: ruff check .
+
+      - name: Run Backend Tests
+        working-directory: apps/product-service
+        run: pytest
+
+  docker:
+    name: Docker Build
+    needs:
+      - frontend
+      - backend
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
       - name: Build Backend Docker Image
-        run: docker build -t cloudcommerce-backend ./apps/product-service
+        run: |
+          docker build \
+          -t cloudcommerce-backend:latest \
+          ./apps/product-service
 
       - name: Build Frontend Docker Image
-        run: docker build -t cloudcommerce-frontend ./apps/frontend
+        run: |
+          docker build \
+          -t cloudcommerce-frontend:latest \
+          ./apps/frontend
